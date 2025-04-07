@@ -20,6 +20,7 @@
 #include "hittable.h"
 #include "hittable_list.h"
 #include "material.h"
+#include "texture.h"
 #include "sphere.h"
 #include "cone.h"
 #include <libavcodec/avcodec.h>
@@ -82,7 +83,9 @@ vec3 read_config(ifstream &conf, const string &key, vec3 default_value) {
 }
 
 void build_simple_world(hittable_list &world) {
-    auto ground_material = make_shared<lambertian>(color(0.2, 0.8, 0.5));
+    auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
+
+    auto ground_material = make_shared<lambertian>(checker);
     world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
     auto material1 = make_shared<dielectric>(1.5);
     auto cone_material = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
