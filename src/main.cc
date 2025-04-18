@@ -84,15 +84,17 @@ vec3 read_config(ifstream &conf, const string &key, vec3 default_value) {
 
 void build_simple_world(hittable_list &world) {
     auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
-
     auto ground_material = make_shared<lambertian>(checker);
     world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
-    auto material1 = make_shared<dielectric>(1.5);
-    auto cone_material = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     //world.add(make_shared<cone>(point3(2, 1, 5), 1.0, 10.0, cone_material));
 
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material2));
+    auto moon_material = make_shared<metal>(color(1, 1, 1) * 10000.0, 0.0);
+    world.add(make_shared<sphere>(point3(0, 5, 0), 1.0, moon_material));
+    world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
+
+
+    auto difflight = make_shared<diffuse_light>(color(1, 1, 1));
+    world.add(make_shared<sphere>(point3(600, -200, 600), 400.0, difflight));
 
     // auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     // world.add(make_shared<sphere>(point3(3, 1.5, 2.5), 1.5, material3));
@@ -195,8 +197,8 @@ void render(const char conffile[]) {
     int max_coord = read_config(conf, "max_coord", 11);
     
     // Store camera settings locally
-    int samples_per_pixel = read_config(conf, "samples_per_pixel", 10);
-    int max_depth = read_config(conf, "max_depth", 20);
+    int samples_per_pixel = read_config(conf, "samples_per_pixel", 400);
+    int max_depth = read_config(conf, "max_depth", 40);
     double vfov = read_config(conf, "vfov", 90.0);
     double defocus_angle = read_config(conf, "defocus_angle", 0.1);
     double focus_dist = read_config(conf, "focus_dist", 10.0);
@@ -225,6 +227,7 @@ void render(const char conffile[]) {
     cam.image_height = h;
     cam.samples_per_pixel = samples_per_pixel;
     cam.max_depth = max_depth;
+    cam.background = color(0, 0, 0);
     cam.vfov = vfov;
     cam.lookfrom = lookfrom0;
     cam.lookat = lookat0;
