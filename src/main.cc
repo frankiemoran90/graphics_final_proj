@@ -82,14 +82,20 @@ vec3 read_config(ifstream &conf, const string &key, vec3 default_value) {
     return default_value;
 }
 
-void build_simple_world(hittable_list &world) {
+//-----------------------------------------------------------------------------
+// moon_picture -- static picture of moon
+//-----------------------------------------------------------------------------
+void moon_picture(hittable_list &world, point3 moon_pos) {
     auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
     auto ground_material = make_shared<lambertian>(checker);
     world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
     //world.add(make_shared<cone>(point3(2, 1, 5), 1.0, 10.0, cone_material));
 
+    auto moon_texture = make_shared<image_texture>("moonmap.jpg");
+    //auto moon_material = make_shared<lambertian>(moon_texture);
+
     auto moon_material = make_shared<metal>(color(1, 1, 1) * 10000.0, 0.0);
-    world.add(make_shared<sphere>(point3(0, 5, 0), 1.0, moon_material));
+    world.add(make_shared<sphere>(moon_pos, 1.0, moon_material));
     world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
 
 
@@ -108,47 +114,6 @@ void build_simple_world(hittable_list &world) {
     cout << "Built world: " << world.objects.size() << " objects\n";
 }
 
-void build_world(hittable_list &world, int min_coord, int max_coord) {
-    auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
-    world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
-
-    for (int a = min_coord; a < max_coord; a++) {
-        for (int b = min_coord; b < max_coord; b++) {
-            auto choose_mat = random_double();
-            point3 center(a + 0.9*random_double(), 0.2, b + 0.9*random_double());
-
-            if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-                shared_ptr<material> sphere_material;
-
-                if (choose_mat < 0.8) {
-                    // diffuse
-                    auto albedo = color::random() * color::random();
-                    sphere_material = make_shared<lambertian>(albedo);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                } else if (choose_mat < 0.95) {
-                    // metal
-                    auto albedo = color::random(0.5, 1);
-                    auto fuzz = random_double(0, 0.5);
-                    sphere_material = make_shared<metal>(albedo, fuzz);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                } else {
-                    // glass
-                    sphere_material = make_shared<dielectric>(1.5);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-            }
-        }
-    }
-    auto material1 = make_shared<dielectric>(1.5);
-    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
-
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
-
-    auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
-    cout << "Built world: " << world.objects.size() << " objects\n";
-}
 
 // Write raw RGBA frames to FFmpeg pipe
 // Format: width x height, 4 bytes per pixel (RGBA)
@@ -191,13 +156,13 @@ void render(const char conffile[]) {
     string filename = read_config(conf, "filename", "test");
     uint32_t w = read_config(conf, "w", 1200);
     uint32_t h = read_config(conf, "h", 1024);
-    uint32_t num_frames = read_config(conf, "num_frames", 1);
+    uint32_t num_frames = read_config(conf, "num_frames", 30);
     uint32_t worldid = read_config(conf, "world", 0);
     int min_coord = read_config(conf, "min_coord", -11);
     int max_coord = read_config(conf, "max_coord", 11);
     
     // Store camera settings locally
-    int samples_per_pixel = read_config(conf, "samples_per_pixel", 400);
+    int samples_per_pixel = read_config(conf, "samples_per_pixel", 10);
     int max_depth = read_config(conf, "max_depth", 40);
     double vfov = read_config(conf, "vfov", 90.0);
     double defocus_angle = read_config(conf, "defocus_angle", 0.1);
@@ -208,26 +173,17 @@ void render(const char conffile[]) {
     vec3 lookfrom1 = read_config(conf, "lookfrom1", vec3(13,2,3));
     vec3 lookat1 = read_config(conf, "lookat1", vec3(0,0,0));
     vec3 vup1 = read_config(conf, "vup1", vec3(0,1,0));
+    vec3 bg_color = read_config(conf, "bg_color", vec3(1,1,1));
 
-    hittable_list world;
-    switch (worldid) {
-        case 0:
-            build_simple_world(world);
-            break;
-        case 1:
-            build_world(world, min_coord, max_coord);
-            break;
-        default:
-            cerr << "Invalid world number\n";
-            return;
-    }
+    //hittable_list world;
+    // 
     camera cam;
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = w;
     cam.image_height = h;
     cam.samples_per_pixel = samples_per_pixel;
     cam.max_depth = max_depth;
-    cam.background = color(0, 0, 0);
+    cam.background = bg_color;
     cam.vfov = vfov;
     cam.lookfrom = lookfrom0;
     cam.lookat = lookat0;
@@ -252,7 +208,8 @@ void render(const char conffile[]) {
          << setw(20) << "vup0:" << vup0 << '\n'
          << setw(20) << "lookfrom1:" << lookfrom1 << '\n'
          << setw(20) << "lookat1:" << lookat1 << '\n'
-         << setw(20) << "vup1:" << vup1 << '\n';
+         << setw(20) << "vup1:" << vup1 << '\n'
+         << setw(20) << "bg_color:" << bg_color << '\n';
 
     const float per_frame = 1.0 / num_frames;
     const vec3 delta_lookfrom = lookfrom1 - lookfrom0;
@@ -264,11 +221,30 @@ void render(const char conffile[]) {
     FILE* pipe = num_frames > 1 ? setup_video_pipe(cam.image_width, cam.image_height, fps, video_filename.c_str()) : nullptr;
     const size_t frame_size = cam.image_width * cam.image_height * 4;
     uint32_t* rgba_buffer = new uint32_t[cam.image_width * cam.image_height];
+
+    /* Video Loop */
     for (int frame = 0; frame < num_frames; frame++) {
         float f = frame * per_frame;
         cam.lookfrom = lookfrom0 + f * delta_lookfrom;
         cam.lookat = lookat0 + f * delta_lookat;
         cam.vup = vup0 + f * delta_vup;
+        
+        hittable_list world;
+       // point3 moon_video_pos = point3(0, 5 - (5 *f), 0);
+       point3 moon_video_pos = point3(-5 + 10 * f, 5, 0);
+
+        /* Decide what world were gonna build */
+        switch (worldid) {
+            case 0:
+                moon_picture(world, point3(0, 5, 0));
+                break;
+            case 1:
+                moon_picture(world, moon_video_pos);
+                break;
+            default:
+                cerr << "Invalid world number\n";
+                return;
+        }
         cam.render(world, rgba_buffer, filename, frame);
         if (frame == 0) {
             write_webp(filename.c_str(), rgba_buffer, cam.image_width, cam.image_height);
@@ -283,6 +259,8 @@ void render(const char conffile[]) {
     delete[] rgba_buffer;
 }
 
+
+/* Main entry point */
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         render("raytrace.conf");
