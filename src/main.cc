@@ -32,6 +32,14 @@
 
 using namespace std;
 
+/* Constants */
+const double r_earth =  6371;
+const double r_moon =  1737.4;
+const double r_sun = 696340;
+const double earth_2_moon = 384400;
+const double earth_2_sun = 1496000000;
+const double sqrt_3 = 1.732;
+
 string read_config(ifstream &conf, const string &key, string default_value) {
     string line;
     getline(conf, line);
@@ -113,6 +121,38 @@ void moon_picture(hittable_list &world, point3 moon_pos) {
 
     cout << "Built world: " << world.objects.size() << " objects\n";
 }
+
+//-----------------------------------------------------------------------------
+// moon_phases -- video from perspective of earth showing moon phases
+//-----------------------------------------------------------------------------
+void moon_phases(hittable_list &world, point3 moon_pos) {
+    auto checker = make_shared<checker_texture>(0.32, color(.8, .0, .1), color(0, .9, 0));
+    auto ground_material = make_shared<lambertian>(checker);
+    world.add(make_shared<sphere>(point3(0,-50,0), 50, ground_material));
+
+    //auto moon_texture = make_shared<image_texture>("moonmap.jpg");
+    //auto moon_material = make_shared<lambertian>(moon_texture);
+
+    auto moon_material = make_shared<metal>(color(1, 1, 1) * 1.0, 0.0);
+    world.add(make_shared<sphere>(moon_pos, 30, moon_material));
+    //world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
+
+
+    auto sunlight = make_shared<diffuse_light>(color(1, 1, 1));
+    world.add(make_shared<sphere>(point3(0, -10000, 0), 5000, sunlight));
+
+    // auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
+    // world.add(make_shared<sphere>(point3(3, 1.5, 2.5), 1.5, material3));
+
+    auto red = color(0.65, 0.05, 0.05);
+
+    auto albedo = red * red;
+    auto sphere_material = make_shared<lambertian>(albedo);
+    //world.add(make_shared<sphere>(point3(4.5, 0.3, 1.0), 0.6, sphere_material));
+
+    cout << "Built world: " << world.objects.size() << " objects\n";
+}
+
 
 
 // Write raw RGBA frames to FFmpeg pipe
@@ -232,6 +272,7 @@ void render(const char conffile[]) {
         hittable_list world;
        // point3 moon_video_pos = point3(0, 5 - (5 *f), 0);
        point3 moon_video_pos = point3(-5 + 10 * f, 5, 0);
+       point3 moon_phase_pos = point3(200 - 10*f, 10* f, 200 - 10*f);
 
         /* Decide what world were gonna build */
         switch (worldid) {
@@ -240,6 +281,10 @@ void render(const char conffile[]) {
                 break;
             case 1:
                 moon_picture(world, moon_video_pos);
+                break;
+            case 2:
+                moon_phases(world, moon_phase_pos);
+                cam.lookat = moon_phase_pos;
                 break;
             default:
                 cerr << "Invalid world number\n";
@@ -252,6 +297,7 @@ void render(const char conffile[]) {
         if (num_frames > 1) {
             write_frame(pipe, (uint8_t*)rgba_buffer, frame_size);
         }
+        printf("\nFrame Num: %d\n", frame);
     }
     if (num_frames > 1) {
         close_video_pipe(pipe);
