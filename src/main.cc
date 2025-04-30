@@ -29,6 +29,7 @@
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include <webp/encode.h>
+#include <chrono>
 
 using namespace std;
 
@@ -94,21 +95,27 @@ vec3 read_config(ifstream &conf, const string &key, vec3 default_value) {
 // moon_picture -- static picture of moon
 //-----------------------------------------------------------------------------
 void moon_picture(hittable_list &world, point3 moon_pos) {
+
+    /* Earth */
     auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
     auto ground_material = make_shared<lambertian>(checker);
     world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
-    //world.add(make_shared<cone>(point3(2, 1, 5), 1.0, 10.0, cone_material));
 
-    auto moon_texture = make_shared<image_texture>("moonmap.jpg");
-    //auto moon_material = make_shared<lambertian>(moon_texture);
-
+    /* Moon */
     auto moon_material = make_shared<metal>(color(1, 1, 1) * 10000.0, 0.0);
-    world.add(make_shared<sphere>(moon_pos, 1.0, moon_material));
-    world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
+    auto moonlight = make_shared<diffuse_light>(color(170, 190, 255));
+    world.add(make_shared<sphere>(moon_pos, 1.0, moonlight));
 
+    /* Ground Objects */
+    auto checker2 = make_shared<checker_texture>(0.32, color(.6, .0, .0), color(.9, .9, .9));
+    auto object_material = make_shared<lambertian>(checker2);
 
+    world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, object_material));
+
+    
+    /* Make the sun */
     auto difflight = make_shared<diffuse_light>(color(1, 1, 1));
-    world.add(make_shared<sphere>(point3(600, -200, 600), 400.0, difflight));
+    //world.add(make_shared<sphere>(point3(600, -200, 600), 400.0, difflight));
 
     // auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     // world.add(make_shared<sphere>(point3(3, 1.5, 2.5), 1.5, material3));
@@ -117,7 +124,7 @@ void moon_picture(hittable_list &world, point3 moon_pos) {
 
     auto albedo = red * red;
     auto sphere_material = make_shared<lambertian>(albedo);
-    //world.add(make_shared<sphere>(point3(4.5, 0.3, 1.0), 0.6, sphere_material));
+    world.add(make_shared<sphere>(point3(-2, 0, 1.0), 1.2, sphere_material));
 
     cout << "Built world: " << world.objects.size() << " objects\n";
 }
@@ -127,19 +134,21 @@ void moon_picture(hittable_list &world, point3 moon_pos) {
 //-----------------------------------------------------------------------------
 void moon_phases(hittable_list &world, point3 moon_pos) {
     auto checker = make_shared<checker_texture>(0.32, color(.8, .0, .1), color(0, .9, 0));
-    auto ground_material = make_shared<lambertian>(checker);
-    world.add(make_shared<sphere>(point3(0,-50,0), 50, ground_material));
+   // auto ground_material = make_shared<lambertian>(checker);
+    auto ground_material = make_shared<metal>(color(1, 0, 0) * 1.0, 20.0);
 
-    //auto moon_texture = make_shared<image_texture>("moonmap.jpg");
+    //world.add(make_shared<sphere>(point3(0,0,0), 50, ground_material));
+
+    auto moon_texture = make_shared<image_texture>("moonmap.jpg");
     //auto moon_material = make_shared<lambertian>(moon_texture);
 
     auto moon_material = make_shared<metal>(color(1, 1, 1) * 1.0, 0.0);
-    world.add(make_shared<sphere>(moon_pos, 30, moon_material));
+    world.add(make_shared<sphere>(moon_pos, 50, moon_material));
     //world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
 
 
     auto sunlight = make_shared<diffuse_light>(color(1, 1, 1));
-    world.add(make_shared<sphere>(point3(0, -10000, 0), 5000, sunlight));
+    world.add(make_shared<sphere>(point3(-10000, 0, 0), 2500, sunlight));
 
     // auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     // world.add(make_shared<sphere>(point3(3, 1.5, 2.5), 1.5, material3));
@@ -268,12 +277,17 @@ void render(const char conffile[]) {
         cam.lookfrom = lookfrom0 + f * delta_lookfrom;
         cam.lookat = lookat0 + f * delta_lookat;
         cam.vup = vup0 + f * delta_vup;
-        
+        float r = 200; // raidus of moon orbit
+        float phase_res = 100;
         hittable_list world;
        // point3 moon_video_pos = point3(0, 5 - (5 *f), 0);
        point3 moon_video_pos = point3(-5 + 10 * f, 5, 0);
-       point3 moon_phase_pos = point3(200 - 10*f, 10* f, 200 - 10*f);
-
+       point3 moon_phase_pos = point3(r * cos((float)frame / phase_res), 
+                                      r/10 * sin((float)frame / phase_res), 
+                                      r * sin((float)frame / phase_res));
+        point3 moon_phase_pos_cam = point3(r * cos((float)frame / phase_res), 
+                                      0, 
+                                      r * sin((float)frame / phase_res));
         /* Decide what world were gonna build */
         switch (worldid) {
             case 0:
@@ -284,7 +298,7 @@ void render(const char conffile[]) {
                 break;
             case 2:
                 moon_phases(world, moon_phase_pos);
-                cam.lookat = moon_phase_pos;
+                cam.lookat = moon_phase_pos_cam;
                 break;
             default:
                 cerr << "Invalid world number\n";
@@ -312,8 +326,15 @@ int main(int argc, char *argv[]) {
         render("raytrace.conf");
         return 0;
     }
+    auto start = std::chrono::high_resolution_clock::now();
+
     for (int i = 1; i < argc; i++) {
         render(argv[i]);
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Total time: " << elapsed.count() << " seconds" << std::endl;
     return 0;
 }

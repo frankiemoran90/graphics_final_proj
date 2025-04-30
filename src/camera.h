@@ -85,7 +85,7 @@ class camera {
             for (int i = 0; i < image_width; i++) {
                 color pixel_color(0,0,0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    ray r = get_ray(i, j);
+                    ray r = get_ray(i, j, sample);
                     pixel_color += ray_color(r, max_depth, world);
                 }
 #if 0
@@ -166,11 +166,12 @@ class camera {
         defocus_disk_v = v * defocus_radius;
     }
 
-    ray get_ray(int i, int j) const {
-        // Construct a camera ray originating from the defocus disk and directed at a randomly
-        // sampled point around the pixel location i, j.
+    ray get_ray(int i, int j, int sample) const {
+        // Construct a camera ray originating from the defocus disk and directed at a
+        // randomly sampled point around the pixel location i, j.
 
-        auto offset = sample_square();
+        //auto offset = sample_square();
+        auto offset = sample_square_efficient(sample);
         auto pixel_sample = pixel00_loc
                           + ((i + offset.x()) * pixel_delta_u)
                           + ((j + offset.y()) * pixel_delta_v);
@@ -184,6 +185,22 @@ class camera {
     vec3 sample_square() const {
         // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
         return vec3(random_double() - 0.5, random_double() - 0.5, 0);
+    }
+
+    vec3 sample_square_efficient(int sample_num) const {
+        /* 
+        Random points 10k times is bad... We can do this better
+        If we can just interpolate the points in the [-.5,-.5]-[+.5,+.5] 
+        unit square we should get better results 
+        */
+
+        double len = sqrt(double(samples_per_pixel));
+
+        uint32_t row_num = sample_num / len;
+        uint32_t col_num = sample_num % (uint32_t)len;
+
+        return vec3(-0.5 + (double)row_num * (1.0/len), 
+                -0.5 + (double)col_num * (1.0/len), 0);
     }
 
     vec3 sample_disk(double radius) const {
