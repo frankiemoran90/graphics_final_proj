@@ -162,6 +162,28 @@ void moon_phases(hittable_list &world, point3 moon_pos) {
     cout << "Built world: " << world.objects.size() << " objects\n";
 }
 
+void earth(hittable_list &world) {
+    auto earth_texture = make_shared<image_texture>("moonmap.jpg");
+    auto earth_surface = make_shared<lambertian>(earth_texture);
+    world.add(make_shared<sphere>(point3(0,0,0), 2, earth_surface));
+
+    camera cam;
+
+    cam.aspect_ratio      = 16.0 / 9.0;
+    cam.image_width       = 400;
+    cam.samples_per_pixel = 100;
+    cam.max_depth         = 50;
+
+    cam.vfov     = 20;
+    cam.lookfrom = point3(0,0,12);
+    cam.lookat   = point3(0,0,0);
+    cam.vup      = vec3(0,1,0);
+
+    cam.defocus_angle = 0;
+
+    //cam.render(hittable_list(globe));
+}
+
 
 
 // Write raw RGBA frames to FFmpeg pipe
@@ -290,7 +312,7 @@ void render(const char conffile[]) {
                                       r * sin((float)frame / phase_res));
         /* Decide what world were gonna build */
         switch (worldid) {
-            case 0:
+            case 0: 
                 moon_picture(world, point3(0, 5, 0));
                 break;
             case 1:
@@ -299,6 +321,9 @@ void render(const char conffile[]) {
             case 2:
                 moon_phases(world, moon_phase_pos);
                 cam.lookat = moon_phase_pos_cam;
+                break;
+            case 3:
+                earth(world);
                 break;
             default:
                 cerr << "Invalid world number\n";

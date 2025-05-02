@@ -52,7 +52,6 @@ class lambertian : public material {
     }
 
   private:
-    color albedo;
     shared_ptr<texture> tex;
 
 };
