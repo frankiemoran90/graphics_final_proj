@@ -1,9 +1,9 @@
 TO DO list for final project
 
-[] Add Quadrilaterals and tiranges
-[] Draw new shapes 
 [X] Add textures class
-[] Add Light sources
-[] Create Movie with changing options
-[] Update config with
-    [] Background color
+[x] Add Light sources
+[x] Create Movie with changing options
+[x] Update config with
+    [x] Background color
+[x] moon phases
+[x] moon and earth video w rotation
