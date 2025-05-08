@@ -12,6 +12,8 @@
 //==============================================================================================
 
 #include "hittable.h"
+
+
 inline void get_sphere_uv(const point3& p, double& u, double& v) {
   auto theta = acos(-p.y());
   auto phi = atan2(-p.z(), p.x()) + pi;

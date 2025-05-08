@@ -50,14 +50,18 @@ class checker_texture : public texture {
 
   class image_texture : public texture {
     public:
-      image_texture(const char* filename) : image(filename) {}
+      image_texture(const char* filename) : image(filename) , rotation(0){}
   
+      void set_rotation(double rot) { rotation = rot;}
       color value(double u, double v, const point3& p) const override {
           // If we have no texture data, then return solid cyan as a debugging aid.
           if (image.height() <= 0) return color(0,1,1);
   
           // Clamp input texture coordinates to [0,1] x [1,0]
-          u = interval(0,1).clamp(u);
+          u = interval(0,1).clamp(u + rotation); // Apply rotation
+          u = u - std::floor(u);  // Wrap around [0,1)
+
+          //u = interval(0,1).clamp(u);
           v = 1.0 - interval(0,1).clamp(v);  // Flip V to image coordinates
           
           auto i = int(u * image.width());
@@ -70,5 +74,6 @@ class checker_texture : public texture {
   
     private:
       rtw_image image;
+      double rotation;
   };
 #endif

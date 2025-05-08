@@ -133,31 +133,14 @@ void moon_picture(hittable_list &world, point3 moon_pos) {
 // moon_phases -- video from perspective of earth showing moon phases
 //-----------------------------------------------------------------------------
 void moon_phases(hittable_list &world, point3 moon_pos) {
-    auto checker = make_shared<checker_texture>(0.32, color(.8, .0, .1), color(0, .9, 0));
-   // auto ground_material = make_shared<lambertian>(checker);
-    auto ground_material = make_shared<metal>(color(1, 0, 0) * 1.0, 20.0);
-
-    //world.add(make_shared<sphere>(point3(0,0,0), 50, ground_material));
 
     auto moon_texture = make_shared<image_texture>("moonmap.jpg");
-    //auto moon_material = make_shared<lambertian>(moon_texture);
-
-    auto moon_material = make_shared<metal>(color(1, 1, 1) * 1.0, 0.0);
-    world.add(make_shared<sphere>(moon_pos, 50, moon_material));
-    //world.add(make_shared<sphere>(point3(1, 1, 1), 1.0, ground_material));
+    auto moon_material = make_shared<lambertian>(moon_texture);
+    world.add(make_shared<sphere>(moon_pos, 5, moon_material));
 
 
-    auto sunlight = make_shared<diffuse_light>(color(1, 1, 1));
-    world.add(make_shared<sphere>(point3(-10000, 0, 0), 2500, sunlight));
-
-    // auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    // world.add(make_shared<sphere>(point3(3, 1.5, 2.5), 1.5, material3));
-
-    auto red = color(0.65, 0.05, 0.05);
-
-    auto albedo = red * red;
-    auto sphere_material = make_shared<lambertian>(albedo);
-    //world.add(make_shared<sphere>(point3(4.5, 0.3, 1.0), 0.6, sphere_material));
+    auto sunlight = make_shared<diffuse_light>(color(30, 30, 30));
+    world.add(make_shared<sphere>(point3(-1000, 0, 0), 250, sunlight));
 
     cout << "Built world: " << world.objects.size() << " objects\n";
 }
@@ -180,8 +163,27 @@ void earth(hittable_list &world) {
     cam.vup      = vec3(0,1,0);
 
     cam.defocus_angle = 0;
+}
 
-    //cam.render(hittable_list(globe));
+//-----------------------------------------------------------------------------
+// moon_and_earth -- video of moon and earth
+//-----------------------------------------------------------------------------
+void moon_and_earth(hittable_list &world, point3 moon_pos, int frame_num) {
+
+    auto moon_texture = make_shared<image_texture>("moonmap.jpg");
+    auto moon_material = make_shared<lambertian>(moon_texture);
+    world.add(make_shared<sphere>(moon_pos, 1.3, moon_material));
+
+    auto earth_texture = make_shared<image_texture>("earthmap1k.jpg");
+    earth_texture->set_rotation(double(frame_num % 16) / 16.0); // 1 rot /22 frames
+    auto earth_material = make_shared<lambertian>(earth_texture);
+    world.add(make_shared<sphere>(point3(0,0,0), 5, earth_material));
+
+
+    auto sunlight = make_shared<diffuse_light>(color(40, 40, 40));
+    world.add(make_shared<sphere>(point3(1000, 0, 0), 250, sunlight));
+
+    cout << "Built world: " << world.objects.size() << " objects\n";
 }
 
 
@@ -299,7 +301,7 @@ void render(const char conffile[]) {
         cam.lookfrom = lookfrom0 + f * delta_lookfrom;
         cam.lookat = lookat0 + f * delta_lookat;
         cam.vup = vup0 + f * delta_vup;
-        float r = 200; // raidus of moon orbit
+        float r = 20; // raidus of moon orbit
         float phase_res = 100;
         hittable_list world;
        // point3 moon_video_pos = point3(0, 5 - (5 *f), 0);
@@ -324,6 +326,9 @@ void render(const char conffile[]) {
                 break;
             case 3:
                 earth(world);
+                break;
+            case 4: 
+                moon_and_earth(world, moon_phase_pos, frame);
                 break;
             default:
                 cerr << "Invalid world number\n";
