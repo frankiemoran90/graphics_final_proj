@@ -52,7 +52,9 @@ class checker_texture : public texture {
     public:
       image_texture(const char* filename) : image(filename) , rotation(0){}
   
-      void set_rotation(double rot) { rotation = rot;}
+      /* We can set the rotation around the Z axis rotation */
+      void set_rotation(double rot) { rotation = rot;} 
+      double get_rotation() const { return rotation; }
       color value(double u, double v, const point3& p) const override {
           // If we have no texture data, then return solid cyan as a debugging aid.
           if (image.height() <= 0) return color(0,1,1);
